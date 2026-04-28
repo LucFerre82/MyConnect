@@ -1,0 +1,57 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: myconnect-db
+    environment:
+      POSTGRES_USER: myconnect
+      POSTGRES_PASSWORD: myconnect123
+      POSTGRES_DB: myconnect
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myconnect"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: myconnect-api
+    environment:
+      DATABASE_URL: postgresql://myconnect:myconnect123@db:5432/myconnect
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENROUTER_BASE_URL: https://openrouter.ai/api/v1
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend/src:/app/src
+    command: npm run start:dev
+
+  frontend:
+    build: ./frontend
+    container_name: myconnect-ui
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/src:/app/src
+    command: npm run dev
+
+  ai-engine:
+    build: ./ai-engine
+    container_name: myconnect-scoring
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

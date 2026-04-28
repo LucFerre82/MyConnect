@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Event {
+  id            String                @id @default(uuid())
+  title         String
+  dates         String
+  location      String
+  createdAt     DateTime              @default(now())
+  attendees     Attendee[]
+  conversations ConversationMessage[]
+}
+
+model Attendee {
+  id            String                @id @default(uuid())
+  eventId       String
+  name          String
+  headline      String
+  bio           String
+  company       String?
+  role          String?
+  skills        String[]
+  lookingFor    String
+  openToChat    Boolean               @default(true)
+  embedding     Unsupported("vector(1536)")?  // pgvector embedding for semantic search
+  createdAt     DateTime              @default(now())
+  event         Event                 @relation(fields: [eventId], references: [id])
+  conversations ConversationMessage[]
+}
+
+model ConversationMessage {
+  id         String   @id @default(uuid())
+  attendeeId String
+  eventId    String
+  role       String
+  content    Json?
+  createdAt  DateTime @default(now())
+  attendee   Attendee @relation(fields: [attendeeId], references: [id])
+  event      Event    @relation(fields: [eventId], references: [id])
+}
